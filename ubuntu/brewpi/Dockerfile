@@ -1,5 +1,5 @@
-FROM resin/rpi-raspbian:stretch
-MAINTAINER BrewPi / Elco Jacobs <elco@brewpi.com>
+FROM ubuntu:18.04
+MAINTAINER bdelbosc
 
 # expose port 80, the default web server port
 EXPOSE 80
@@ -7,17 +7,16 @@ EXPOSE 80
 EXPOSE 81
 
 # install apt dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   build-essential \
   python-dev \
   python-pip \
   git \
-  php7.0-fpm \
-  php7.0-mbstring \
-  php7.0-xml \
+  php7.2-fpm \
+  php7.2-mbstring \
+  php7.2-xml \
   nginx \
   tzdata \
-  nano \
   vim \
   dfu-util \
   apache2-utils \
@@ -36,23 +35,29 @@ RUN pip install --upgrade pyserial psutil simplejson configobj gitpython
 RUN rm -rf /var/www/html
 
 # clone brewpi repositories
-RUN git clone --depth 1 https://github.com/BrewPi/brewpi-script /home/brewpi
-RUN git clone --depth 1 https://github.com/BrewPi/brewpi-www /var/www/html
-RUN git clone --depth 1 https://github.com/BrewPi/brewpi-tools /root/brewpi-tools 
+RUN git clone --depth 1 -b legacy https://github.com/bdelbosc/brewpi-script /home/brewpi
+RUN git clone --depth 1 -b legacy https://github.com/bdelbosc/brewpi-www /var/www/html
+RUN git clone --depth 1 https://github.com/BrewPi/brewpi-tools /root/brewpi-tools
+
+# Install brewmon
+RUN git clone --depth 1 https://github.com/bdelbosc/brewmon /tmp/brewmon
+WORKDIR /tmp/brewmon
+RUN python setup.py install --force
+RUN rm -rf /tmp/brewmon
 
 # copy nginx conf to nginx default
 RUN mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
-COPY nginx-conf.txt /etc/nginx/sites-available/default
+COPY common/brewpi/nginx-conf.txt /etc/nginx/sites-available/default
 
 # set permissions on html directory
 RUN chown -R www-data:www-data /var/www/html; chmod g+s /var/www/html
 
 # Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
+COPY common/brewpi/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Copy script that periodically checks the script status
-COPY watcher.sh /watcher.sh
+COPY common/brewpi/watcher.sh /watcher.sh
 RUN chmod +x /watcher.sh
 
 WORKDIR /home/brewpi/

@@ -33,16 +33,17 @@ chmod 755 /home/brewpi/logs/stderr.txt
 
 # setup default password for port 81 if the password file doesn't exist
 if ! [ -f /data/settings/brewpi.htpasswd ]; then
-  htpasswd -bc /data/settings/brewpi.htpasswd brewer brewpi
+  htpasswd -bc /data/settings/brewpi.htpasswd brewpi brewpi
 fi
 
 # make sure a config.cfg file exist, so it is easier for users to edit it
 if ! [ -f /data/settings/config.cfg ]; then
   cp /data/settings/config.cfg.example /data/settings/config.cfg
+  echo "useInfluxDb = True" >> /data/settings/config.cfg
 fi
 
 service nginx start
-service php7.0-fpm start
+service php7.2-fpm start
 
 # run command if passed to the container, instead of running watcher.sh
 exec "$@"

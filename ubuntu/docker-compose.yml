@@ -1,21 +1,65 @@
-version: '2'
+version: '2.1'
 services:
-  brewpi:
-    build: .
-    image: brewpi/brewpi-ubuntu
-    container_name: brewpi-${BREWPI_ID} 
-    hostname: brewpi-${BREWPI_ID}.local
+
+  influxdb:
+    build:
+      context: ../
+      dockerfile: ./ubuntu/influxdb/Dockerfile
+    image: influxdb:latest
+    container_name: influxdb
     ports:
-        - 80${BREWPI_ID}:80 
+      # Only brewpi uses the udp port
+      #- 4444:4444/udp
+      - 8086:8086
     environment:
-        - BREWPI_ID=${BREWPI_ID}
+      - INFLUXDB_DB=brewmon
     volumes:
-        - ${DATA_DIR}/brewpi-${BREWPI_ID}:/data
-        # get timezone from host by mounting host settings 
-        - "/etc/timezone:/etc/timezone:ro"
-        - "/etc/localtime:/etc/localtime:ro"
+      - ${DATA_DIR}/influxdb:/var/lib/influxdb
+      # get timezone from host by mounting host settings
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    restart: always
+
+  grafana:
+    build:
+      context: ../
+      dockerfile: ./ubuntu/grafana/Dockerfile
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - 3000:3000
+    depends_on:
+      - influxdb
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=ryantxu-ajax-panel
+    # default user id is 472
+    user: root
+    volumes:
+      - ${DATA_DIR}/grafana:/var/lib/grafana
+      # get timezone from host by mounting host settings
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    restart: always
+
+  brewpi:
+    build:
+      context: ../
+      dockerfile: ./ubuntu/brewpi/Dockerfile
+    image: brewpi/brewpi-ubuntu:legacy
+    container_name: brewpi
+    hostname: brewpi.local
+    ports:
+      - 80:81
+    depends_on:
+      - influxdb
+    volumes:
+      - ${DATA_DIR}/data:/data
+      # get timezone from host by mounting host settings
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
     restart: always
 
 networks:
-    default:
-      driver: bridge
+  default:
+    driver: bridge

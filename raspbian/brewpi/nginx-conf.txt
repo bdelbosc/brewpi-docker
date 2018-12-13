@@ -1,14 +1,12 @@
 server {
     listen       80;
     server_name  brewpi.local;
-    
     root /var/www/html;
     index index.php index.html index.htm;
 
     location / {
         try_files $uri $uri/ =404;
     }
-    
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
@@ -22,7 +20,6 @@ server {
 server {
     listen                  81;
     server_name             brewpi-protected.local;
-        
     location / {
         proxy_pass                              http://localhost:80/;
         proxy_buffering                         off;
@@ -32,5 +29,16 @@ server {
         proxy_set_header X-Forwarded-Proto      $scheme;
         auth_basic                              "Username and Password Required";
         auth_basic_user_file                    /data/settings/brewpi.htpasswd;
+    }
+    # lcd info public
+    location = /lcd.php {
+       auth_basic off;
+       proxy_pass                              http://localhost:80/lcd.php;
+       proxy_buffering                         off;
+       proxy_set_header Host                   $http_host;
+       proxy_set_header X-Real-IP              $remote_addr;
+       proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto      $scheme;
+       allow all;
     }
 }
